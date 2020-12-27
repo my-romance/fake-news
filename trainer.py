@@ -35,7 +35,7 @@ class Trainer(object):
         self.device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         self.model.to(self.device)
 
-    def train(self):
+    def train(self, mode):
         train_sampler = RandomSampler(self.train_dataset)
         train_dataloader = DataLoader(self.train_dataset, sampler=train_sampler, batch_size=self.args.train_batch_size)
 
@@ -76,8 +76,6 @@ class Trainer(object):
             for step, batch in enumerate(epoch_iterator):
                 self.model.train()
                 batch = tuple(t.to(self.device) for t in batch)  # GPU or CPU
-                print(batch)
-                print(sss)
                 inputs = {'input_ids': batch[0],
                           'attention_mask': batch[1],
                           'labels': batch[3]}
@@ -100,8 +98,8 @@ class Trainer(object):
                     self.model.zero_grad()
                     global_step += 1
 
-                    if self.args.logging_steps > 0 and global_step % self.args.logging_steps == 0:
-                        self.evaluate("test")  # Only test set available for NSMC
+                    if self.args.logging_steps > 0 and global_step % self.args.logging_steps == 0 and mode == 'dev':
+                        self.evaluate("dev")
 
                     if self.args.save_steps > 0 and global_step % self.args.save_steps == 0:
                         self.save_model()
@@ -113,6 +111,9 @@ class Trainer(object):
             if 0 < self.args.max_steps < global_step:
                 train_iterator.close()
                 break
+
+        print("saving final model...")
+        self.save_model()
 
         return global_step, tr_loss / global_step
 
@@ -160,6 +161,9 @@ class Trainer(object):
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(
                     out_label_ids, inputs['labels'].detach().cpu().numpy(), axis=0)
+
+        if mode == 'test':
+            return out_label_ids
 
         eval_loss = eval_loss / nb_eval_steps
         results = {
