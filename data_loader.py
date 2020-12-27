@@ -87,7 +87,7 @@ class NsmcProcessor(object):
             text_a = line[2]
             text_b = line[3]
             sentence_order = int(line[4])
-            if set_type == 'eval':
+            if set_type == 'test':
                 label = 0
                 examples_id.append(line[5])
             else:

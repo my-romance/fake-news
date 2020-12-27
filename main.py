@@ -22,7 +22,10 @@ def main(args):
     if args.do_eval:
         trainer.load_model()
         results = trainer.evaluate("test")
+        print("dataset_id : ", dataset_id)
+        print("results : ", results)
         results = [[data_id, result] for (data_id, result) in zip(dataset_id, results)]
+        print(results)
         write_csvFile(os.path.join(args.data_dir, "result.csv"), results)
 
 
