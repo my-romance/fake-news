@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# 제출 참고용 :  https://dacon.io/competitions/official/235401/codeshare/629?page=1&dtype=recent&ptype=pub
 
 import csv
 

@@ -1,4 +1,4 @@
-import os
+import os, csv
 import random
 import logging
 
@@ -48,3 +48,13 @@ def acc_score(preds, labels):
     return {
         "acc": simple_accuracy(preds, labels),
     }
+
+
+def write_csvFile(src, data):
+    fw = open(src,'w',encoding='utf-8')
+    wrt = csv.writer(fw,delimiter=',')
+
+    for x in data:
+        wrt.writerow(x)
+
+    fw.close()

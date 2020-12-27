@@ -6,7 +6,6 @@ import logging
 import torch
 from torch.utils.data import TensorDataset
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -62,6 +61,7 @@ class InputFeatures(object):
         """Serializes this instance to a JSON string."""
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
+
 class NsmcProcessor(object):
     """Processor for the NSMC data set """
 
@@ -81,16 +81,21 @@ class NsmcProcessor(object):
     def _create_examples(self, lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
+        examples_id = []
         for (i, line) in enumerate(lines[1:]):
             guid = "%s-%s" % (set_type, i)
             text_a = line[2]
             text_b = line[3]
             sentence_order = int(line[4])
-            label = int(line[5])
+            if set_type == 'eval':
+                label = 0
+                examples_id.append(line[5])
+            else:
+                label = int(line[5])
             if i % 1000 == 0:
                 logger.info(line)
             examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-        return examples
+        return examples, examples_id
 
     def get_examples(self, mode):
         """
@@ -176,13 +181,17 @@ def convert_examples_to_features(examples, max_title_len, max_sentence_len, toke
         padding_length = max_sentence_len - len(input_ids_b)
         input_ids += input_ids_b + ([pad_token_id] * padding_length)
         attention_mask += attention_mask_b + ([0 if mask_padding_with_zero else 1] * padding_length)
-        token_type_ids += token_type_ids + ([sequence_b_segment_id]*padding_length)
+        token_type_ids = token_type_ids + ([sequence_b_segment_id] * padding_length)
 
-        assert len(input_ids) == max_title_len + max_sentence_len, "Error with input length {} vs {}".format(len(input_ids), max_title_len)
-        assert len(attention_mask) == max_title_len, "Error with attention mask length {} vs {}".format(
+
+        assert len(input_ids) == max_title_len + max_sentence_len, "Error with input length {} vs {}".format(
+            len(input_ids), max_title_len)
+        assert len(
+            attention_mask) == max_title_len + max_sentence_len, "Error with attention mask length {} vs {}".format(
             len(attention_mask), max_title_len + max_sentence_len)
-        assert len(token_type_ids) == max_title_len, "Error with token type length {} vs {}".format(len(token_type_ids),
-                                                                                                    max_title_len)
+        assert len(token_type_ids) == max_title_len + max_sentence_len, "Error with token type length {} vs {}".format(
+            len(token_type_ids),
+            max_title_len + max_sentence_len)
 
         label_id = example.label
 
@@ -210,20 +219,21 @@ def load_and_cache_examples(args, tokenizer, mode):
 
     # Load data features from cache or dataset file
     cached_file_name = 'cached_{}_{}_{}_{}'.format(
-        args.task, list(filter(None, args.model_name_or_path.split("/"))).pop(), args.max_seq_len, mode)
+        args.task, list(filter(None, args.model_name_or_path.split("/"))).pop(),
+        args.max_title_len + args.max_sentence_len, mode)
 
     cached_features_file = os.path.join(args.data_dir, cached_file_name)
-    if os.path.exists(cached_features_file):
+    if os.path.exists(cached_features_file) and not (mode == 'test'):
         logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
         if mode == "train":
-            examples = processor.get_examples("train")
+            examples, _ = processor.get_examples("train")
         elif mode == "dev":
-            examples = processor.get_examples("dev")
+            examples, _ = processor.get_examples("dev")
         elif mode == "test":
-            examples = processor.get_examples("test")
+            examples, examples_id = processor.get_examples("test")
         else:
             raise Exception("For mode, Only train, dev, test is available")
 
@@ -239,4 +249,7 @@ def load_and_cache_examples(args, tokenizer, mode):
 
     dataset = TensorDataset(all_input_ids, all_attention_mask,
                             all_token_type_ids, all_label_ids)
+    if mode == 'test':
+        return dataset, examples_id
+
     return dataset
