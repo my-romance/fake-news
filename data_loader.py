@@ -76,7 +76,7 @@ class NsmcProcessor(object):
 
         data = [x for x in rdr]
         fr.close()
-        return data[1:]
+        return data
 
     def _create_examples(self, lines, set_type):
         """Creates examples for the training and dev sets."""

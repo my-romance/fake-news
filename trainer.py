@@ -36,7 +36,7 @@ class Trainer(object):
         self.model.to(self.device)
 
     def train(self, mode):
-        train_sampler = RandomSampler(self.train_dataset)
+        train_sampler = SequentialSampler(self.train_dataset)
         train_dataloader = DataLoader(self.train_dataset, sampler=train_sampler, batch_size=self.args.train_batch_size)
 
         if self.args.max_steps > 0:
@@ -162,9 +162,6 @@ class Trainer(object):
                 out_label_ids = np.append(
                     out_label_ids, inputs['labels'].detach().cpu().numpy(), axis=0)
 
-        if mode == 'test':
-            return out_label_ids
-
         eval_loss = eval_loss / nb_eval_steps
         results = {
             "loss": eval_loss
@@ -173,6 +170,9 @@ class Trainer(object):
         preds = np.argmax(preds, axis=1)
         result = compute_metrics(preds, out_label_ids)
         results.update(result)
+
+        if mode == 'test':
+            return preds
 
         logger.info("***** Eval results *****")
         for key in sorted(results.keys()):
